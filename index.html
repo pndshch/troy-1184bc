@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>トロイの木馬 1184BC — The Trojan Horse</title>
+<meta name="description" content="紀元前1184年、トロイの木馬に隠れたギリシャ兵を門まで導け。松明の光を避けるステルス・タイミングゲーム。">
+<meta property="og:title" content="トロイの木馬 1184BC — The Trojan Horse">
+<meta property="og:description" content="松明の光を避けて城門を開けろ！ トロイ戦争の伝説を体験するステルスゲーム">
+<meta property="og:type" content="website">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{height:100%;overflow:hidden;font-family:'Hiragino Sans','Helvetica Neue',Arial,sans-serif;color:#e0d5c0}
+body{background:#060a14;position:relative}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+
+.lang-switch{position:fixed;top:10px;right:10px;display:flex;gap:2px;background:rgba(16,20,30,.85);border:1px solid #2a2a3a;border-radius:7px;padding:2px;z-index:100}
+.lang-btn{font-size:10px;font-weight:700;letter-spacing:.5px;padding:4px 9px;border-radius:5px;color:#555;transition:background .15s,color .15s}
+.lang-btn.active{background:#7c3aed;color:#fff}
+
+#title-screen{position:fixed;inset:0;background:linear-gradient(180deg,#050810 0%,#0c1428 40%,#141e38 100%);z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;transition:opacity .5s}
+#title-screen.hidden{opacity:0;pointer-events:none}
+.title-horse{font-size:80px;margin-bottom:12px;filter:drop-shadow(0 0 20px rgba(180,120,40,.3))}
+.title-main{font-size:26px;font-weight:800;letter-spacing:1px;margin-bottom:4px;background:linear-gradient(135deg,#d4a050,#f0c870);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.title-sub{font-size:13px;color:#6a7a90;margin-bottom:20px;letter-spacing:.5px}
+.title-lore{font-size:13px;line-height:1.8;color:#8a9ab0;max-width:360px;margin-bottom:28px}
+.title-lore strong{color:#d4a050}
+.start-btn{padding:14px 48px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:16px;font-weight:700;border-radius:12px;letter-spacing:1px;box-shadow:0 4px 20px rgba(124,58,237,.35);transition:transform .1s}
+.start-btn:active{transform:scale(.95)}
+
+#result-screen{position:fixed;inset:0;background:rgba(6,10,20,.95);z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;opacity:0;pointer-events:none;transition:opacity .5s}
+#result-screen.show{opacity:1;pointer-events:auto}
+.result-icon{font-size:64px;margin-bottom:12px}
+.result-title{font-size:24px;font-weight:800;margin-bottom:6px}
+.result-stat{font-size:14px;color:#8a9ab0;margin-bottom:4px}
+.result-lore{font-size:13px;line-height:1.8;color:#8a9ab0;max-width:360px;margin:16px 0 24px}
+.result-lore strong{color:#d4a050}
+.retry-btn{padding:12px 40px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:15px;font-weight:700;border-radius:10px;letter-spacing:1px;box-shadow:0 4px 16px rgba(124,58,237,.3);transition:transform .1s}
+.retry-btn:active{transform:scale(.95)}
+
+canvas{display:block;width:100%;height:58vh;touch-action:none}
+
+#ui{position:fixed;bottom:0;left:0;right:0;height:42vh;background:linear-gradient(180deg,rgba(8,14,28,.7) 0%,rgba(6,10,20,.96) 30%);border-top:1px solid rgba(200,160,80,.12);z-index:20;display:flex;flex-direction:column;padding:8px 14px 16px;gap:6px}
+
+.hud{display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.5px;color:#5a6a7a}
+.hud .val{color:#d4a050;font-weight:800}
+.hud .danger{color:#e05050}
+
+#progress-bar{width:100%;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+#progress-fill{height:100%;width:0;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:3px;transition:width .3s}
+
+#log{flex:1;background:rgba(0,0,0,.25);border:1px solid rgba(200,160,80,.08);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.7;overflow-y:auto;color:#8a9070;min-height:40px;scroll-behavior:smooth}
+#log .hi{color:#d4a050;font-weight:600}
+#log .ok{color:#50c060}
+#log .danger{color:#e05050}
+#log .dim{color:#4a5060}
+
+.release-btn{width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;font-size:16px;font-weight:700;border-radius:10px;letter-spacing:1px;transition:transform .08s,opacity .15s;box-shadow:0 4px 16px rgba(124,58,237,.25)}
+.release-btn:active{transform:scale(.96)}
+.release-btn:disabled{opacity:.35;transform:none}
+
+@media(max-height:600px){
+  canvas{height:50vh}
+  #ui{height:50vh}
+}
+</style>
+</head>
+<body>
+
+<div class="lang-switch">
+  <button class="lang-btn active" onclick="setLang('ja')">JP</button>
+  <button class="lang-btn" onclick="setLang('en')">EN</button>
+</div>
+
+<div id="title-screen">
+  <div class="title-horse">🐴</div>
+  <div class="title-main" data-i="titleMain">トロイの木馬</div>
+  <div class="title-sub">1184 BC — The Trojan Horse</div>
+  <p class="title-lore" data-i="titleLore">
+    <strong>紀元前1184年</strong>、トロイ戦争10年目の夜。ギリシャ軍は巨大な木馬を残して撤退したように見せかけた。しかし木馬の腹には<strong>精鋭兵士</strong>が隠れていた——。トロイの人々が勝利を祝い酔いつぶれた深夜、兵士たちは木馬から這い出し、<strong>城門</strong>を目指す。松明を持つ<strong>衛兵</strong>の巡回を避け、闇に紛れて門を開けろ。
+  </p>
+  <button class="start-btn" data-i="startBtn" onclick="startGame()">出撃せよ</button>
+</div>
+
+<div id="result-screen">
+  <div class="result-icon" id="resultIcon">⚔️</div>
+  <div class="result-title" id="resultTitle" data-i="resultTitle"></div>
+  <div class="result-stat" id="resultStat1"></div>
+  <div class="result-stat" id="resultStat2"></div>
+  <p class="result-lore" id="resultLore" data-i="resultLore"></p>
+  <button class="retry-btn" data-i="retryBtn" onclick="retry()">もう一度</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="ui">
+  <div class="hud">
+    <span><span data-i="hudPassed">到達</span>: <span class="val" id="hudPassed">0</span> / <span id="hudTarget">10</span></span>
+    <span><span data-i="hudCaught">発覚</span>: <span class="val" id="hudCaught">0</span> / 5</span>
+    <span><span data-i="hudDawn">夜明け</span>: <span class="val" id="hudTimer">2:00</span></span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="log"></div>
+  <button class="release-btn" id="releaseBtn" data-i="releaseBtn" onclick="releaseSoldier()" disabled>兵士を送り出す</button>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const CVS = $('#game');
+const CTX = CVS.getContext('2d');
+
+const I18N = {
+  ja: {
+    titleMain: 'トロイの木馬',
+    titleLore: '<strong>紀元前1184年</strong>、トロイ戦争10年目の夜。ギリシャ軍は巨大な木馬を残して撤退したように見せかけた。しかし木馬の腹には<strong>精鋭兵士</strong>が隠れていた——。トロイの人々が勝利を祝い酔いつぶれた深夜、兵士たちは木馬から這い出し、<strong>城門</strong>を目指す。松明を持つ<strong>衛兵</strong>の巡回を避け、闇に紛れて門を開けろ。',
+    startBtn: '出撃せよ',
+    releaseBtn: '兵士を送り出す',
+    hudPassed: '到達',
+    hudCaught: '発覚',
+    hudDawn: '夜明け',
+    retryBtn: 'もう一度',
+    log0: '<span class="hi">【作戦開始】</span> 木馬の腹から兵士を一人ずつ送り出せ。',
+    log1: '松明の<span class="danger">光</span>を避けろ。衛兵に見つかるな。',
+    log2: '城門まで<span class="hi">10人</span>到達すれば門を開けられる。',
+    logPass: n => `<span class="ok">✓ ${n}人目が城門に到達！</span>`,
+    logCaught: n => `<span class="danger">✗ 発覚！ 残りミス ${5 - n}回</span>`,
+    logReady: '兵士の準備完了。タイミングを見計らえ。',
+    logRunning: '闇を走れ…！',
+    victoryTitle: '城門 陥落！',
+    victoryStat1: (p, c) => `到達 ${p}人 ／ 発覚 ${c}人`,
+    victoryStat2: t => `残り時間 ${t}`,
+    victoryLore: '門が開かれ、海岸で待機していたギリシャ連合軍が<strong>トロイ城内</strong>に雪崩れ込んだ。<strong>10年</strong>に及ぶ戦争は、知略による一夜の奇襲で幕を閉じた。この伝説はホメロスの叙事詩に語り継がれ、「<strong>トロイの木馬</strong>」は今日では巧妙な策略の代名詞となっている。',
+    defeatTitle: '作戦失敗…',
+    defeatLore: '衛兵に察知され、城門を開けることはできなかった。しかし歴史では、<strong>オデュッセウス</strong>の策は見事に成功した。紀元前1184年の夜、木馬の中の兵士たちは城門を開き、ギリシャ軍は城内に突入してトロイを陥落させた。',
+  },
+  en: {
+    titleMain: 'The Trojan Horse',
+    titleLore: '<strong>1184 BC</strong>, the tenth year of the Trojan War. The Greeks left a giant wooden horse and pretended to sail away. But hidden inside were <strong>elite soldiers</strong>. As the Trojans celebrated their "victory" and fell into drunken sleep, the soldiers crept out under cover of darkness toward the <strong>city gates</strong>. Avoid the <strong>torchlight</strong> of patrolling guards and open the gates.',
+    startBtn: 'Begin the Mission',
+    releaseBtn: 'Send Soldier',
+    hudPassed: 'Passed',
+    hudCaught: 'Caught',
+    hudDawn: 'Dawn in',
+    retryBtn: 'Try Again',
+    log0: '<span class="hi">[MISSION START]</span> Send soldiers from the horse one at a time.',
+    log1: 'Avoid the <span class="danger">torchlight</span>. Don\'t let guards spot you.',
+    log2: 'Get <span class="hi">10 soldiers</span> to the gate to open it.',
+    logPass: n => `<span class="ok">✓ Soldier #${n} reached the gate!</span>`,
+    logCaught: n => `<span class="danger">✗ Spotted! ${5 - n} mistakes left</span>`,
+    logReady: 'Soldier ready. Time your release.',
+    logRunning: 'Run through the darkness…!',
+    victoryTitle: 'Gate Breached!',
+    victoryStat1: (p, c) => `Passed: ${p} / Caught: ${c}`,
+    victoryStat2: t => `Time remaining: ${t}`,
+    victoryLore: 'The gates swung open, and the Greek army waiting on the shore <strong>stormed into Troy</strong>. The <strong>10-year</strong> war ended in a single night of cunning and stealth. This legend, told in Homer\'s epics, made the "<strong>Trojan Horse</strong>" a timeless symbol of deception and strategy.',
+    defeatTitle: 'Mission Failed…',
+    defeatLore: 'The guards were alerted and the gates could not be opened. But in actual history, <strong>Odysseus\'s</strong> plan succeeded brilliantly. On that night in 1184 BC, the soldiers hidden inside the wooden horse opened the gates, and the Greek army rushed in to conquer Troy.',
+  }
+};
+
+let lang = 'ja';
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.trim() === (l === 'ja' ? 'JP' : 'EN')));
+  document.querySelectorAll('[data-i]').forEach(el => {
+    const k = el.getAttribute('data-i');
+    if (I18N[l][k]) el.innerHTML = I18N[l][k];
+  });
+}
+
+const AUDIO = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq, dur, type = 'sine', vol = 0.12) {
+  const o = AUDIO.createOscillator();
+  const g = AUDIO.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, AUDIO.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AUDIO.currentTime + dur);
+  o.connect(g).connect(AUDIO.destination);
+  o.start(); o.stop(AUDIO.currentTime + dur);
+}
+function sfxRelease() { beep(600, 0.1, 'triangle', 0.08); beep(800, 0.08, 'triangle', 0.06); }
+function sfxCaught() { beep(200, 0.3, 'sawtooth', 0.1); beep(150, 0.4, 'sawtooth', 0.08); }
+function sfxPass() { beep(880, 0.1, 'sine', 0.1); setTimeout(() => beep(1100, 0.15, 'sine', 0.08), 80); }
+function sfxVictory() { [660,880,1100,1320].forEach((f,i) => setTimeout(() => beep(f, 0.3, 'sine', 0.1), i*120)); }
+
+const CFG = {
+  TARGET: 10,
+  MAX_CAUGHT: 5,
+  TIME: 120,
+  SOLDIER_SPEED: 3.5,
+  TORCH_R: 0.048,
+  HORSE_X: 0.08,
+  GATE_X: 0.92,
+  PATH_Y: 0.52,
+  PATH_H: 0.20,
+  guards: [
+    { x: 0.24, speed: 0.7, phase: 0 },
+    { x: 0.40, speed: -1.0, phase: 0.4 },
+    { x: 0.56, speed: 0.85, phase: 0.15 },
+    { x: 0.72, speed: -0.75, phase: 0.7 },
+    { x: 0.85, speed: 1.1, phase: 0.5 },
+  ]
+};
+
+let W, H, dpr;
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const rect = CVS.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  CVS.width = W * dpr; CVS.height = H * dpr;
+  CTX.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+let state = null;
+
+function initState() {
+  const guards = CFG.guards.map(g => ({
+    baseX: g.x * W,
+    y: CFG.PATH_Y * H,
+    speed: g.speed,
+    phase: g.phase,
+    torchR: CFG.TORCH_R * H,
+    patrolTop: (CFG.PATH_Y - CFG.PATH_H) * H,
+    patrolBot: (CFG.PATH_Y + CFG.PATH_H) * H,
+    t: g.phase * Math.PI * 2
+  }));
+  return {
+    phase: 'play',
+    guards,
+    soldiers: [],
+    passed: 0,
+    caught: 0,
+    timer: CFG.TIME,
+    cooldown: 0,
+    particles: [],
+    stars: Array.from({ length: 60 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H * 0.3,
+      r: Math.random() * 1.2 + 0.3,
+      blink: Math.random() * Math.PI * 2
+    }))
+  };
+}
+
+function log(msg) {
+  const el = $('#log');
+  el.innerHTML += msg + '<br>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function startGame() {
+  AUDIO.resume();
+  $('#title-screen').classList.add('hidden');
+  $('#result-screen').classList.remove('show');
+  $('#log').innerHTML = '';
+  state = initState();
+  log(I18N[lang].log0);
+  log(I18N[lang].log1);
+  log(I18N[lang].log2);
+  $('#releaseBtn').disabled = false;
+  state.cooldown = 0;
+  updateHUD();
+  if (loopInterval) clearInterval(loopInterval);
+  loopInterval = setInterval(loop, 16);
+}
+
+function retry() {
+  startGame();
+}
+
+function releaseSoldier() {
+  if (!state || state.phase !== 'play') return;
+  if (state.cooldown > 0) return;
+  if (state.soldiers.some(s => s.alive && !s.reached)) return;
+
+  AUDIO.resume();
+  sfxRelease();
+
+  const horseX = CFG.HORSE_X * W;
+  const pathY = CFG.PATH_Y * H;
+  state.soldiers.push({
+    x: horseX,
+    y: pathY,
+    alive: true,
+    reached: false,
+    speed: CFG.SOLDIER_SPEED * (W / 400),
+    flash: 0
+  });
+  state.cooldown = 30;
+  log(I18N[lang].logRunning);
+}
+
+function updateHUD() {
+  if (!state) return;
+  $('#hudPassed').textContent = state.passed;
+  $('#hudCaught').textContent = state.caught;
+  const m = Math.floor(state.timer / 60);
+  const s = Math.floor(state.timer % 60);
+  $('#hudTimer').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  $('#progress-fill').style.width = `${(state.passed / CFG.TARGET) * 100}%`;
+
+  if (state.caught >= 3) {
+    $('#hudCaught').classList.add('danger');
+  }
+
+  const canRelease = state.phase === 'play' && state.cooldown <= 0 && !state.soldiers.some(s => s.alive && !s.reached);
+  $('#releaseBtn').disabled = !canRelease;
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    state.particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 3,
+      vy: (Math.random() - 0.5) * 3,
+      life: 30 + Math.random() * 20,
+      maxLife: 50,
+      color,
+      r: Math.random() * 2 + 1
+    });
+  }
+}
+
+let loopInterval = null;
+function loop() {
+  if (!state || state.phase !== 'play') return;
+
+  const dt = 1;
+
+  state.timer -= dt / 60;
+  if (state.cooldown > 0) state.cooldown -= dt;
+
+  for (const g of state.guards) {
+    g.t += g.speed * 0.03 * dt;
+    g.y = ((Math.sin(g.t) + 1) / 2) * (g.patrolBot - g.patrolTop) + g.patrolTop;
+  }
+
+  const gateX = CFG.GATE_X * W;
+  for (const s of state.soldiers) {
+    if (!s.alive || s.reached) continue;
+    s.x += s.speed * dt;
+    if (s.flash > 0) s.flash -= dt;
+
+    if (s.x >= gateX) {
+      s.reached = true;
+      state.passed++;
+      sfxPass();
+      spawnParticles(s.x, s.y, '#50c060', 12);
+      log(I18N[lang].logPass(state.passed));
+      if (state.passed >= CFG.TARGET) {
+        victory();
+        return;
+      }
+      setTimeout(() => log(I18N[lang].logReady), 600);
+    }
+
+    for (const g of state.guards) {
+      const dx = s.x - g.baseX;
+      const dy = s.y - g.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < g.torchR * 0.85) {
+        s.alive = false;
+        state.caught++;
+        sfxCaught();
+        spawnParticles(s.x, s.y, '#e05050', 15);
+        log(I18N[lang].logCaught(state.caught));
+        if (state.caught >= CFG.MAX_CAUGHT) {
+          defeat();
+          return;
+        }
+        setTimeout(() => log(I18N[lang].logReady), 600);
+        break;
+      }
+    }
+  }
+
+  for (const p of state.particles) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.life -= dt;
+  }
+  state.particles = state.particles.filter(p => p.life > 0);
+
+  if (state.timer <= 0) {
+    defeat();
+    return;
+  }
+
+  draw();
+  updateHUD();
+}
+
+function draw() {
+  const ctx = CTX;
+  ctx.clearRect(0, 0, W, H);
+
+  const skyH = H * 0.35;
+  const grd = ctx.createLinearGradient(0, 0, 0, skyH);
+  grd.addColorStop(0, '#040810');
+  grd.addColorStop(0.5, '#0a1020');
+  grd.addColorStop(1, '#101828');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, skyH);
+
+  for (const s of state.stars) {
+    const a = 0.3 + 0.7 * Math.abs(Math.sin(s.blink + performance.now() * 0.001));
+    ctx.fillStyle = `rgba(220,220,255,${a * 0.6})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const moonX = W * 0.82, moonY = H * 0.08, moonR = 14;
+  const mg = ctx.createRadialGradient(moonX - 2, moonY - 2, 0, moonX, moonY, moonR);
+  mg.addColorStop(0, '#ffeebb');
+  mg.addColorStop(0.6, '#ddcc88');
+  mg.addColorStop(1, '#aa8844');
+  ctx.fillStyle = mg;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+  ctx.fill();
+  const mgl = ctx.createRadialGradient(moonX, moonY, moonR, moonX, moonY, moonR * 4);
+  mgl.addColorStop(0, 'rgba(255,238,187,.08)');
+  mgl.addColorStop(1, 'rgba(255,238,187,0)');
+  ctx.fillStyle = mgl;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, moonR * 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawWalls(ctx, skyH);
+  drawCourtyard(ctx, skyH);
+  drawHorse(ctx);
+  drawGate(ctx);
+
+  for (const g of state.guards) {
+    drawTorchGlow(ctx, g.baseX, g.y, g.torchR);
+  }
+  for (const g of state.guards) {
+    drawGuard(ctx, g.baseX, g.y);
+  }
+
+  for (const s of state.soldiers) {
+    if (!s.alive && s.flash <= 0) continue;
+    if (s.reached) continue;
+    drawSoldier(ctx, s);
+  }
+
+  for (const p of state.particles) {
+    const a = p.life / p.maxLife;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  const dawnProg = Math.max(0, 1 - state.timer / CFG.TIME);
+  if (dawnProg > 0.5) {
+    const a = (dawnProg - 0.5) * 0.3;
+    const dg = ctx.createLinearGradient(W, 0, 0, H * 0.5);
+    dg.addColorStop(0, `rgba(255, 140, 60, ${a})`);
+    dg.addColorStop(0.5, `rgba(200, 100, 40, ${a * 0.3})`);
+    dg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = dg;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawWalls(ctx, skyH) {
+  ctx.fillStyle = '#1a1814';
+  ctx.fillRect(0, skyH, W, H * 0.08);
+  const wallY = skyH;
+  const wallH = H * 0.06;
+  ctx.fillStyle = '#2a2520';
+  ctx.fillRect(0, wallY, W, wallH);
+  ctx.fillStyle = '#3a3530';
+  for (let x = 0; x < W; x += 18) {
+    ctx.fillRect(x, wallY, 8, wallH * 0.35);
+  }
+  ctx.strokeStyle = '#4a4540';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, wallY + wallH);
+  ctx.lineTo(W, wallY + wallH);
+  ctx.stroke();
+}
+
+function drawCourtyard(ctx, skyH) {
+  const courtY = skyH + H * 0.08;
+  const courtH = H - courtY;
+  const cg = ctx.createLinearGradient(0, courtY, 0, courtY + courtH);
+  cg.addColorStop(0, '#12110e');
+  cg.addColorStop(0.5, '#0e0d0a');
+  cg.addColorStop(1, '#0a0908');
+  ctx.fillStyle = cg;
+  ctx.fillRect(0, courtY, W, courtH);
+
+  ctx.strokeStyle = 'rgba(60,50,40,.08)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 28) {
+    ctx.beginPath();
+    ctx.moveTo(x, courtY);
+    ctx.lineTo(x, courtY + courtH);
+    ctx.stroke();
+  }
+  for (let y = courtY; y < courtY + courtH; y += 18) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  }
+}
+
+function drawHorse(ctx) {
+  const hx = CFG.HORSE_X * W;
+  const hy = CFG.PATH_Y * H;
+  const sz = Math.min(W, H) * 0.06;
+
+  ctx.fillStyle = '#5a4030';
+  ctx.beginPath();
+  ctx.moveTo(hx - sz * 0.5, hy + sz * 0.6);
+  ctx.lineTo(hx - sz * 0.5, hy - sz * 0.3);
+  ctx.lineTo(hx - sz * 0.2, hy - sz * 0.6);
+  ctx.lineTo(hx + sz * 0.1, hy - sz * 0.9);
+  ctx.lineTo(hx + sz * 0.3, hy - sz * 0.7);
+  ctx.lineTo(hx + sz * 0.2, hy - sz * 0.4);
+  ctx.lineTo(hx + sz * 0.5, hy - sz * 0.35);
+  ctx.lineTo(hx + sz * 0.6, hy - sz * 0.1);
+  ctx.lineTo(hx + sz * 0.5, hy + sz * 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#4a3020';
+  ctx.fillRect(hx - sz * 0.4, hy + sz * 0.6, sz * 0.15, sz * 0.3);
+  ctx.fillRect(hx + sz * 0.25, hy + sz * 0.6, sz * 0.15, sz * 0.3);
+
+  ctx.fillStyle = '#705838';
+  ctx.fillRect(hx - sz * 0.15, hy - sz * 0.05, sz * 0.3, sz * 0.25);
+  ctx.strokeStyle = '#8a7050';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(hx - sz * 0.15, hy - sz * 0.05, sz * 0.3, sz * 0.25);
+
+  const hgl = ctx.createRadialGradient(hx, hy, 0, hx, hy, sz * 1.5);
+  hgl.addColorStop(0, 'rgba(90,64,48,.12)');
+  hgl.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = hgl;
+  ctx.beginPath();
+  ctx.arc(hx, hy, sz * 1.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGate(ctx) {
+  const gx = CFG.GATE_X * W;
+  const gy = CFG.PATH_Y * H;
+  const gw = Math.min(W, H) * 0.04;
+  const gh = Math.min(W, H) * 0.1;
+
+  const openProg = state ? state.passed / CFG.TARGET : 0;
+  const gap = openProg * gw * 0.8;
+
+  ctx.fillStyle = '#3a3028';
+  ctx.fillRect(gx - gw - gap / 2, gy - gh / 2, gw, gh);
+  ctx.fillRect(gx + gap / 2, gy - gh / 2, gw, gh);
+
+  ctx.strokeStyle = '#5a4a38';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(gx - gw - gap / 2, gy - gh / 2, gw, gh);
+  ctx.strokeRect(gx + gap / 2, gy - gh / 2, gw, gh);
+
+  ctx.fillStyle = '#6a5a48';
+  for (let i = 0; i < 3; i++) {
+    const ry = gy - gh / 2 + gh * (i + 1) / 4;
+    ctx.beginPath();
+    ctx.arc(gx - gap / 2 - 4, ry, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(gx + gap / 2 + 4, ry, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#2a2218';
+  ctx.fillRect(gx - gw * 1.4, gy - gh / 2 - 8, gw * 2.8 + gap, 8);
+  ctx.fillStyle = '#3a3228';
+  for (let x = gx - gw * 1.2; x < gx + gw * 1.2; x += 10) {
+    ctx.fillRect(x, gy - gh / 2 - 12, 5, 5);
+  }
+
+  if (openProg > 0) {
+    const glw = ctx.createRadialGradient(gx, gy, 0, gx, gy, gh);
+    glw.addColorStop(0, `rgba(80,192,96,${openProg * 0.12})`);
+    glw.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glw;
+    ctx.beginPath();
+    ctx.arc(gx, gy, gh, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawTorchGlow(ctx, x, y, r) {
+  const flicker = 0.9 + Math.sin(performance.now() * 0.008 + x) * 0.1;
+  const rr = r * flicker;
+
+  const g1 = ctx.createRadialGradient(x, y, 0, x, y, rr);
+  g1.addColorStop(0, 'rgba(255,170,50,.28)');
+  g1.addColorStop(0.4, 'rgba(255,120,20,.12)');
+  g1.addColorStop(0.7, 'rgba(255,80,10,.04)');
+  g1.addColorStop(1, 'rgba(255,60,0,0)');
+  ctx.fillStyle = g1;
+  ctx.beginPath();
+  ctx.arc(x, y, rr, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawGuard(ctx, x, y) {
+  ctx.fillStyle = '#aa8844';
+  ctx.beginPath();
+  ctx.arc(x, y - 7, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#8a6630';
+  ctx.fillRect(x - 3, y - 3, 6, 10);
+
+  ctx.fillStyle = '#5a3a18';
+  ctx.fillRect(x + 5, y - 10, 2, 14);
+
+  const ft = performance.now() * 0.01 + x;
+  const fx = x + 6 + Math.sin(ft) * 1;
+  const fy = y - 12 + Math.cos(ft * 1.3) * 0.5;
+  ctx.fillStyle = '#ff9922';
+  ctx.beginPath();
+  ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffcc44';
+  ctx.beginPath();
+  ctx.arc(fx, fy - 1, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawSoldier(ctx, s) {
+  const a = s.alive ? 1 : Math.max(0, s.flash / 15);
+  ctx.globalAlpha = a;
+
+  if (!s.alive) {
+    ctx.fillStyle = '#e05050';
+  } else {
+    ctx.fillStyle = '#2a3050';
+  }
+
+  ctx.beginPath();
+  ctx.arc(s.x, s.y - 5, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(s.x - 2.5, s.y - 1, 5, 9);
+
+  if (s.alive) {
+    ctx.fillStyle = '#4a5a7a';
+    ctx.beginPath();
+    ctx.arc(s.x + 4, s.y + 1, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+function victory() {
+  state.phase = 'done';
+  if (loopInterval) { clearInterval(loopInterval); loopInterval = null; }
+  sfxVictory();
+  $('#releaseBtn').disabled = true;
+  const t = I18N[lang];
+  setTimeout(() => {
+    const m = Math.floor(state.timer / 60);
+    const s = Math.floor(state.timer % 60);
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+    $('#resultIcon').textContent = '⚔️';
+    $('#resultTitle').textContent = t.victoryTitle;
+    $('#resultStat1').textContent = t.victoryStat1(state.passed, state.caught);
+    $('#resultStat2').textContent = t.victoryStat2(timeStr);
+    $('#resultLore').innerHTML = t.victoryLore;
+    $('#result-screen').classList.add('show');
+  }, 800);
+}
+
+function defeat() {
+  state.phase = 'done';
+  if (loopInterval) { clearInterval(loopInterval); loopInterval = null; }
+  $('#releaseBtn').disabled = true;
+  const t = I18N[lang];
+  setTimeout(() => {
+    $('#resultIcon').textContent = '🌅';
+    $('#resultTitle').textContent = t.defeatTitle;
+    const m = Math.floor(Math.max(0, state.timer) / 60);
+    const s = Math.floor(Math.max(0, state.timer) % 60);
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+    $('#resultStat1').textContent = t.victoryStat1(state.passed, state.caught);
+    $('#resultStat2').textContent = t.victoryStat2(timeStr);
+    $('#resultLore').innerHTML = t.defeatLore;
+    $('#result-screen').classList.add('show');
+  }, 600);
+}
+
+CVS.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (state && state.phase === 'play') releaseSoldier();
+});
+
+resize();
+</script>
+</body>
+</html>
